@@ -1,0 +1,64 @@
+docker-compose build
+docker-compose up -d --force-recreate
+
+docker save -o tpaip-images.tar tpaip-backend:latest tpaip-chromadb:latest tpaip-frontend:latest tpaip-mcp:latest
+
+docker load -i tpaip-images.tar clawhub-images.tar
+
+docker load -i clawhub-images.tar
+停止所有服务
+docker compose down
+
+解压到对应路径
+unzip -o ./chroma_server.zip -d ./qa-system/backend/data
+
+修复向量库权限
+sudo chown -R 1000:1000 ./qa-system/backend/data/chroma_server
+
+重新启动所有服务
+docker compose up -d
+
+检查容器状态
+docker compose ps
+
+用户发送消息：客户端向 /createMessage API 发送一个请求。
+准备阶段：createMessage 函数被调用，它验证用户、设置好 SSE 响应头，然后调用 sessionMessageService。
+任务启动：sessionMessageService 启动 AI 模型生成任务，并立即返回 stream 和 completion。
+开始抽水：createMessage 拿到 stream 后，创建 reader 并启动 pumpStream 函数。
+数据流动：pumpStream 进入循环，AI 模型每生成一小段文本，reader.read() 就能读到，然后 pumpStream 立即将其通过 SSE 发送给客户端。
+用户看到实时效果：浏览器收到 SSE 数据，实时更新界面，显示出正在“打字”的 AI 回复。
+任务完成：AI 模型生成完毕，stream 结束。pumpStream 的 reader.read() 返回 done: true，循环结束。
+关闭连接：pumpStream 调用 finalizeResponse，发送 [DONE] 信号，并调用 res.end() 关闭连接，整个流程结束。
+
+python -m pip install paddlepaddle==3.2.2 -i https://www.paddlepaddle.org.cn/packages/stable/cpu/
+
+
+python -m pip install paddlepaddle==3.2.2 -i https://www.paddlepaddle.org.cn/packages/stable/cpu/
+
+
+python -m pip install paddlepaddle==3.2.2 -i https://www.paddlepaddle.org.cn/packages/stable/cpu/
+
+
+pip install paddleocr
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

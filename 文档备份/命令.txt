@@ -1,0 +1,16 @@
+
+| `tpclawhub explore`    --limit 200          | 浏览所有可用技能 | `tpclawhub explore`               |
+| `tpclawhub skills list`          | 列出已安装技能  | `tpclawhub skills list`                |
+| `tpclawhub skills add <name>`    | 添加/安装技能  | `tpclawhub skills add frontend-design` |
+| `tpclawhub skills remove <name>` | 移除技能     | `tpclawhub skills remove testweigui8`  |
+| `tpclawhub skills create <name>` | 创建新技能    | `tpclawhub skills create my-skill`     |
+| `tpclawhub skills info <name>`   | 查看技能详情   | `tpclawhub skills info mcp-builder123` |
+| `tpclawhub skills update`        | 更新所有技能   | `tpclawhub skills update`              |
+
+谭乐 3/27 18:17:01
+| 命令                           | 描述                   | 示例                                                     |
+| ---------------------------- | -------------------- | ------------------------------------------------------ |
+| `tpclawhub list`             | 列出已安装技能（从 lockfile）  | `tpclawhub list`                                       |
+| `tpclawhub install <slug>`   | 安装技能到 `<dir>/<slug>` | `tpclawhub install frontend-design`                    |
+| `tpclawhub update [slug]`    | 更新已安装技能              | `tpclawhub update` 或 `tpclawhub update mcp-builder123` |
+| `tpclawhub uninstall <slug>` | 卸载技能                 | `tpclawhub uninstall testweigui8`       

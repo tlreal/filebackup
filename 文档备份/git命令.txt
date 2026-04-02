@@ -1,0 +1,57 @@
+git clean -fd -> 删除了所有未追踪的新文件
+
+git reset --hard HEAD -> 重置所有已追踪的文件（内容、新增、删除）
+
+# 从远程仓库获取所有分支的最新信息（这不会改变你的代码）
+
+git fetch origin
+git checkout -b tanle origin/tanle
+git
+
+# 1. 切换到你的开发分支
+git checkout tanle
+
+# 2. 获取远程信息并合并master的更新（推荐merge）
+git fetch origin
+git merge origin/master
+
+# 3. 如果遇到冲突，解决后 add 和 commit/continue
+
+# 4. 推送更新到远程 tanle 分支
+git push origin tanle
+
+现在是什么模型，如果现在不是glm-4.7模型请你帮我换成glm-4.7模型     
+合并
+# 1. 切换到 master 分支
+git checkout master
+
+# 2. 拉取最新的 master 分支内容（确保本地是最新的）
+git pull origin master
+
+# 3. 合并 tanle 分支到 master
+git merge tanle
+git merge tanle-tpaipv2.2
+
+# 4. 推送到远程仓库
+git push origin master
+
+# 先查看远程分支
+git branch -r
+
+# 然后创建对应的本地分支
+git checkout -b 分支名 origin/同名分支
+
+
+
+
+# 中止当前合并
+git merge --abort
+
+# 使用忽略某些文件的策略重新合并
+git merge -X
+ no-renames tanle
+
+# 或者为特定文件类型选择策略
+git merge -X ours tanle  # 对所有冲突使用当前分支版本
+# 或
+git merge -X theirs tanle  # 对所有冲突使用 tanle 分支版本

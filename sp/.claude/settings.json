@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \":*)",
+      "Bash(C:/ProgramData/miniconda3/envs/paddle26/python.exe ocr_api.py --input \"第12章\" --start-index 27 --end-index 27)",
+      "Bash(C:/ProgramData/miniconda3/envs/paddle26/python.exe ocr_api.py --input \"第13章\" --start-index 22 --end-index 22)",
+      "Bash(C:/ProgramData/miniconda3/envs/paddle26/python.exe ocr_api.py --input \"第13章\" --start-index 61 --end-index 61)"
+    ]
+  }
+}

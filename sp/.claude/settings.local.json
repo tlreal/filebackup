@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(C:/ProgramData/miniconda3/envs/paddle26/python.exe ocr_api.py --input \"第1章\" --merge)",
+      "Bash(C:/ProgramData/miniconda3/envs/paddle26/python.exe ocr_api.py --input \"第14章\" --start-index 38 --end-index 38)",
+      "Bash(C:/ProgramData/miniconda3/envs/paddle26/python.exe ocr_api.py --input \"第14章\" --start-index 41 --end-index 41)",
+      "Bash(C:/ProgramData/miniconda3/envs/paddle26/python.exe ocr_api.py --input \"第14章\" --start-index 45 --end-index 45)",
+      "Bash(C:/ProgramData/miniconda3/envs/paddle26/python.exe ocr_api.py --input \"第16章\" --start-index 26 --end-index 26)",
+      "Bash(C:/ProgramData/miniconda3/envs/paddle26/python.exe ocr_api.py --input \"第12章\" --merge-only)",
+      "Bash(C:/ProgramData/miniconda3/envs/paddle26/python.exe ocr_api.py --input \"第13章\" --merge-only)",
+      "Bash(C:/ProgramData/miniconda3/envs/paddle26/python.exe ocr_api.py --input \"第14章\" --merge-only)",
+      "Bash(C:/ProgramData/miniconda3/envs/paddle26/python.exe ocr_api.py --input \"第16章\" --merge-only)",
+      "Bash(python -c \":*)",
+      "Bash(C:/ProgramData/miniconda3/envs/paddle26/python.exe ocr_api.py --input \"第8章\" --start-index 44 --end-index 44)",
+      "Bash(C:/ProgramData/miniconda3/envs/paddle26/python.exe ocr_api.py --input \"第9章\" --start-index 74 --end-index 74)",
+      "Bash(C:/ProgramData/miniconda3/envs/paddle26/python.exe ocr_api.py --input \"第8章\" --merge-only)"
+    ]
+  }
+}

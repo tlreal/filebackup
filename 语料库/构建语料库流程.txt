@@ -1,0 +1,14 @@
+起点: corpus.jsonl  
+将每页图片按文件名顺序处理，从 page_0000.jpg 开始，每处理完一页，追加一行 JSON 到corpus.jsonl 中，每行只包含该页的整页文本，不带坐标或版面结构
+第1步: 数据清洗     │  (去除页眉、页脚、页码等噪声)
+
+第2步: 构建“语义块”  │  (将跨页的、同主题的段落合并)
+通过语义块构建为跨页连续拼接，按“思想完整性”切分，不再以单页为硬边界；不在出现文本被截断问题
+得到rag_semantic_blocks.jsonl
+
+第3步: 生成对话格式    (将每个“语义块”转为聊天格式)
+按每个语义块调用 DeepSeek Chat API 生成问答，并逐行写入；
+得到chat_qa_full.jsonl  
+
+第4步: 划分数据集  使用chat_qa_full.jsonl划分  （使用Hugging Face 中datasets 库去做分层划分）（8:1:1划分）
+得到train.jsonl, val.jsonl, test.jsonl

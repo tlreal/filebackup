@@ -1,0 +1,424 @@
+192.168.62.34
+aiadmin
+xxA-bc1jaeEz
+
+
+QWEasd123!
+
+admin
+TP#AI#P@techphant2025
+
+
+
+tuya密码
+TANle.0808
+
+
+npm install
+npm run build
+
+
+http://192.168.62.34:8000
+
+
+
+import base64
+import io
+import time
+import uvicorn
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import Optional, List, Union, Any, Dict
+from transformers import AutoTokenizer, AutoModel
+from PIL import Image
+import torch
+
+# ================= 配置 =================
+MODEL_PATH = "D:/models/glm-4v-9b"
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+PORT = 8000
+# =======================================
+
+app = FastAPI(title="GLM-4V API (Fixed)")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+print("🚀 系统启动中...")
+print(f"⏳ 正在加载模型: {MODEL_PATH} ...")
+
+try:
+    # 加载 Tokenizer
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH, trust_remote_code=True)
+    
+    # 加载模型
+    model = AutoModel.from_pretrained(
+        MODEL_PATH,
+        torch_dtype=torch.bfloat16 if torch.cuda.is_available() else torch.float32,
+        trust_remote_code=True
+    ).eval()
+
+    if torch.cuda.is_available():
+        model = model.cuda()
+    
+    print("✅ 模型加载成功！")
+except Exception as e:
+    print(f"❌ 模型加载失败: {e}")
+    raise e
+
+class ChatRequest(BaseModel):
+    prompt: str
+    image_base64: Optional[str] = None
+    max_tokens: int = 512
+    temperature: float = 0.8
+
+class ChatMessage(BaseModel):
+    role: str
+    content: Union[str, List[Any]]
+
+class ChatCompletionRequest(BaseModel):
+    model: Optional[str] = "glm-4v-9b"
+    messages: List[ChatMessage]
+    max_tokens: Optional[int] = 512
+    temperature: Optional[float] = 0.7
+    top_p: Optional[float] = 0.9
+    stream: Optional[bool] = False
+
+class ResponsesRequest(BaseModel):
+    model: Optional[str] = "glm-4v-9b"
+    input: Any
+    max_tokens: Optional[int] = 512
+    temperature: Optional[float] = 0.7
+    top_p: Optional[float] = 0.9
+
+def process_base64(b64_str: str) -> str:
+    """清理并修复 Base64 字符串"""
+    b64_str = b64_str.strip()
+    if "," in b64_str:
+        b64_str = b64_str.split(",")[1]
+    
+    # 修复 Padding
+    missing_padding = len(b64_str) % 4
+    if missing_padding:
+        b64_str += '=' * (4 - missing_padding)
+    
+    # 验证是否合法
+    try:
+        base64.b64decode(b64_str)
+    except Exception:
+        raise ValueError("Invalid Base64 string")
+        
+    return b64_str
+
+@app.post("/chat")
+async def chat(request: ChatRequest):
+    try:
+        image_obj = None
+        if request.image_base64:
+            try:
+                clean_b64 = process_base64(request.image_base64)
+                img_bytes = base64.b64decode(clean_b64)
+                image_obj = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+            except Exception as img_err:
+                raise HTTPException(status_code=400, detail=f"图片解析失败: {str(img_err)}")
+
+        if image_obj is None:
+            image_obj = Image.new("RGB", (224, 224), color="black")
+
+        inputs = tokenizer.apply_chat_template(
+            [
+                {
+                    "role": "user",
+                    "image": image_obj,
+                    "content": request.prompt,
+                }
+            ],
+            add_generation_prompt=True,
+            tokenize=True,
+            return_tensors="pt",
+            return_dict=True,
+        )
+
+        device = next(model.parameters()).device
+        inputs = inputs.to(device)
+
+        with torch.no_grad():
+            outputs = model.generate(
+                **inputs,
+                max_new_tokens=request.max_tokens,
+                do_sample=True if request.temperature > 0 else False,
+                temperature=request.temperature,
+                top_p=0.8,
+                repetition_penalty=1.1,
+            )
+
+        input_len = inputs["input_ids"].shape[1]
+        output_text = tokenizer.decode(outputs[0][input_len:], skip_special_tokens=True)
+
+        return {"response": output_text.strip()}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ 处理请求时出错: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/v1/chat/completions")
+async def chat_completions(request: ChatCompletionRequest):
+    if model is None or tokenizer is None:
+        raise HTTPException(status_code=503, detail="模型正在加载中，请稍后再试")
+    try:
+        if not request.messages:
+            raise HTTPException(status_code=400, detail="messages 不能为空")
+        last_message = request.messages[-1]
+        if last_message.role != "user":
+            for msg in reversed(request.messages):
+                if msg.role == "user":
+                    last_message = msg
+                    break
+        prompt_text = ""
+        image_obj = None
+        if isinstance(last_message.content, str):
+            prompt_text = last_message.content
+        elif isinstance(last_message.content, list):
+            for item in last_message.content:
+                if isinstance(item, dict):
+                    item_type = item.get("type")
+                    if item_type == "text":
+                        prompt_text += str(item.get("text", ""))
+                    elif item_type == "image_url":
+                        image_url = item.get("image_url")
+                        url = None
+                        if isinstance(image_url, dict):
+                            url = image_url.get("url")
+                        elif isinstance(image_url, str):
+                            url = image_url
+                        if not url:
+                            continue
+                        if "," in url:
+                            b64_part = url.split(",", 1)[1]
+                        else:
+                            b64_part = url
+                        clean_b64 = process_base64(b64_part)
+                        img_bytes = base64.b64decode(clean_b64)
+                        image_obj = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+        if image_obj is None:
+            image_obj = Image.new("RGB", (224, 224), color="black")
+            if not prompt_text:
+                prompt_text = "描述这张图片"
+        inputs = tokenizer.apply_chat_template(
+            [
+                {
+                    "role": "user",
+                    "image": image_obj,
+                    "content": prompt_text,
+                }
+            ],
+            add_generation_prompt=True,
+            tokenize=True,
+            return_tensors="pt",
+            return_dict=True,
+        )
+        device = next(model.parameters()).device
+        inputs = inputs.to(device)
+        max_tokens = request.max_tokens if request.max_tokens is not None else 512
+        temperature = request.temperature if request.temperature is not None else 0.7
+        top_p = request.top_p if request.top_p is not None else 0.9
+        with torch.no_grad():
+            outputs = model.generate(
+                **inputs,
+                max_new_tokens=max_tokens,
+                do_sample=True if temperature > 0 else False,
+                temperature=temperature,
+                top_p=top_p,
+                repetition_penalty=1.1,
+            )
+        input_len = inputs["input_ids"].shape[1]
+        output_tokens = outputs[0]
+        completion_tokens = output_tokens[input_len:]
+        output_text = tokenizer.decode(completion_tokens, skip_special_tokens=True).strip()
+        prompt_tokens_count = int(input_len)
+        completion_tokens_count = int(completion_tokens.shape[0])
+        total_tokens_count = int(output_tokens.shape[0])
+        now = int(time.time())
+        response = {
+            "id": "chatcmpl-" + str(now),
+            "object": "chat.completion",
+            "created": now,
+            "model": request.model or "glm-4v-9b",
+            "choices": [
+                {
+                    "index": 0,
+                    "message": {
+                        "role": "assistant",
+                        "content": output_text,
+                    },
+                    "finish_reason": "stop",
+                }
+            ],
+            "usage": {
+                "prompt_tokens": prompt_tokens_count,
+                "completion_tokens": completion_tokens_count,
+                "total_tokens": total_tokens_count,
+            },
+        }
+        return response
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ 处理 OpenAI 请求时出错: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/chat/completions")
+async def chat_completions_compat(request: ChatCompletionRequest):
+    return await chat_completions(request)
+
+@app.get("/v1/models")
+async def list_models_v1():
+    now = int(time.time())
+    return {
+        "object": "list",
+        "data": [
+            {
+                "id": "glm-4v-9b",
+                "object": "model",
+                "created": now,
+                "owned_by": "owner",
+            }
+        ],
+    }
+
+@app.get("/models")
+async def list_models():
+    return await list_models_v1()
+
+@app.post("/v1/responses")
+async def responses_v1(request: ResponsesRequest):
+    if model is None or tokenizer is None:
+        raise HTTPException(status_code=503, detail="模型正在加载中，请稍后再试")
+    try:
+        value = request.input
+        prompt_text = ""
+        if isinstance(value, str):
+            prompt_text = value
+        elif isinstance(value, list):
+            parts = []
+            for item in value:
+                if isinstance(item, str):
+                    parts.append(item)
+                elif isinstance(item, dict):
+                    text = item.get("text") or item.get("input_text") or item.get("content")
+                    if isinstance(text, str):
+                        parts.append(text)
+            prompt_text = "".join(parts)
+        elif isinstance(value, dict):
+            text = value.get("text") or value.get("input_text") or value.get("content")
+            if isinstance(text, str):
+                prompt_text = text
+        if not prompt_text:
+            raise HTTPException(status_code=400, detail="input 不能为空")
+        image_obj = Image.new("RGB", (224, 224), color="black")
+        inputs = tokenizer.apply_chat_template(
+            [
+                {
+                    "role": "user",
+                    "image": image_obj,
+                    "content": prompt_text,
+                }
+            ],
+            add_generation_prompt=True,
+            tokenize=True,
+            return_tensors="pt",
+            return_dict=True,
+        )
+        device = next(model.parameters()).device
+        inputs = inputs.to(device)
+        max_tokens = request.max_tokens if request.max_tokens is not None else 512
+        temperature = request.temperature if request.temperature is not None else 0.7
+        top_p = request.top_p if request.top_p is not None else 0.9
+        with torch.no_grad():
+            outputs = model.generate(
+                **inputs,
+                max_new_tokens=max_tokens,
+                do_sample=True if temperature > 0 else False,
+                temperature=temperature,
+                top_p=top_p,
+                repetition_penalty=1.1,
+            )
+        input_len = inputs["input_ids"].shape[1]
+        output_tokens = outputs[0]
+        completion_tokens = output_tokens[input_len:]
+        output_text = tokenizer.decode(completion_tokens, skip_special_tokens=True).strip()
+        prompt_tokens_count = int(input_len)
+        completion_tokens_count = int(completion_tokens.shape[0])
+        total_tokens_count = int(output_tokens.shape[0])
+        now = int(time.time())
+        response = {
+            "id": "resp-" + str(now),
+            "object": "response",
+            "created": now,
+            "model": request.model or "glm-4v-9b",
+            "output": [
+                {
+                    "role": "assistant",
+                    "content": [
+                        {
+                            "type": "output_text",
+                            "text": {
+                                "value": output_text,
+                                "annotations": [],
+                            },
+                        }
+                    ],
+                }
+            ],
+            "usage": {
+                "prompt_tokens": prompt_tokens_count,
+                "completion_tokens": completion_tokens_count,
+                "total_tokens": total_tokens_count,
+            },
+        }
+        return response
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ 处理 Responses 请求时出错: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/responses")
+async def responses(request: ResponsesRequest):
+    return await responses_v1(request)
+
+@app.get("/")
+async def root():
+    return {
+        "message": "GLM-4V-9B service is running",
+        "endpoints": [
+            "/health",
+            "/chat",
+            "/v1/chat/completions",
+            "/responses",
+            "/v1/responses",
+            "/docs",
+        ],
+    }
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
+
+if __name__ == "__main__":
+    print(f"✅ 服务准备就绪，监听 http://0.0.0.0:{PORT}")
+    uvicorn.run(app, host="0.0.0.0", port=PORT)
